@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FM26 · Aston Villa スカッド分析</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --claret: #8B0000; --claret-dark: #5C0000; --claret-mid: #A50019;
+  --gold: #C5A028; --gold-light: #E8C040; --star-empty: #4B5563;
+  --bg: #111827; --bg2: #1F2937; --bg3: #374151;
+  --text: #F9FAFB; --text2: #9CA3AF; --border: #374151;
+  --green: #10B981; --red: #EF4444; --amber: #F59E0B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+header { background: var(--claret-dark); border-bottom: 3px solid var(--gold); padding: 0 20px; }
+.header-inner { max-width: 1400px; margin: 0 auto; padding: 12px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.crest { width: 44px; height: 44px; background: var(--gold); border-radius: 50% 50% 45% 45%/60% 60% 40% 40%; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 900; color: var(--claret-dark); flex-shrink: 0; }
+.header-text h1 { font-size: 18px; font-weight: 700; color: #fff; }
+.header-text p  { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+.game-date-box  { display: flex; flex-direction: column; gap: 2px; padding: 5px 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 7px; }
+.game-date-box label { font-size: 9px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; }
+.game-date-box input[type=date] { background: transparent; border: none; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; outline: none; width: 116px; }
+.header-actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+.btn-sm { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13); color: rgba(255,255,255,0.7); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.btn-sm:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+main { max-width: 1400px; margin: 0 auto; padding: 16px 20px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; text-align: center; }
+.stat-label { display: block; font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+.stat-value { display: block; font-size: 20px; font-weight: 700; color: var(--gold); line-height: 1; }
+.stat-sub   { display: block; font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+.tab-bar { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.tab-btn { background: none; border: none; color: var(--text2); padding: 8px 16px; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+.controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.search-box { flex: 1; min-width: 150px; background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; color: var(--text); font-size: 14px; }
+.search-box:focus { outline: none; border-color: var(--claret-mid); }
+.filter-sel { background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 8px; color: var(--text); font-size: 13px; cursor: pointer; }
+.filter-sel option { background: var(--bg3); }
+.btn-add { background: var(--claret); border: none; color: #fff; padding: 7px 14px; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-add:hover { background: var(--claret-mid); }
+
+.table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--bg3); }
+th { padding: 9px 11px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+tbody tr { border-top: 1px solid var(--border); }
+tbody tr:hover { background: rgba(255,255,255,0.025); }
+td { padding: 9px 11px; vertical-align: middle; }
+
+.pos-badges { display: flex; flex-wrap: wrap; gap: 3px; }
+.pos-badge { display: inline-block; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; white-space: nowrap; }
+.pos-gk  { background: #78350F; color: #FDE68A; }
+.pos-def { background: #1E3A5F; color: #BAE6FD; }
+.pos-mid { background: #14532D; color: #BBF7D0; }
+.pos-att { background: #7F1D1D; color: #FECACA; }
+
+.stars { white-space: nowrap; }
+.star { font-size: 14px; }
+.star.full  { color: var(--gold-light); }
+.star.empty { color: var(--star-empty); }
+.star.half  { background: linear-gradient(90deg, var(--gold-light) 50%, var(--star-empty) 50%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.star-num   { font-size: 10px; color: var(--text2); margin-left: 2px; }
+
+.growth-pos  { color: var(--green); font-size: 11px; font-weight: 600; }
+.growth-zero { color: var(--text2); font-size: 11px; }
+
+.contract-ok      { color: var(--text); font-size: 12px; }
+.contract-warn    { color: var(--amber); font-size: 12px; font-weight: 600; }
+.contract-expired { color: var(--red); font-size: 12px; font-weight: 600; }
+.contract-none    { color: var(--text2); font-size: 12px; }
+
+.loan-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: #312E81; color: #C7D2FE; letter-spacing: 0.03em; }
+
+.loan-check-wrap { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; cursor: pointer; }
+.loan-check-wrap input[type=checkbox] { accent-color: #818CF8; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.loan-check-wrap span { font-size: 13px; color: var(--text); }
+
+.btn-icon { background: none; border: 1px solid var(--border); color: var(--text2); padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; }
+.btn-icon:hover { color: var(--text); }
+.btn-del:hover  { color: var(--red); border-color: var(--red); }
+
+.empty-state { text-align: center; padding: 52px 20px; color: var(--text2); }
+.empty-state .icon { font-size: 42px; margin-bottom: 10px; }
+.empty-state p { font-size: 14px; }
+
+.depth-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+.depth-col  { background: var(--bg3); border-radius: 8px; padding: 10px; }
+.depth-header { font-size: 11px; font-weight: 700; text-align: center; border-radius: 5px; padding: 5px; margin-bottom: 8px; }
+.depth-player { background: var(--bg2); border-radius: 5px; padding: 6px 8px; margin-bottom: 5px; }
+.dp-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.dp-info { display: flex; align-items: center; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
+.dp-age  { font-size: 10px; color: var(--text2); }
+.dp-ca   { font-size: 10px; color: var(--gold-light); }
+
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.chart-card  { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.chart-title { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 200; align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 13px; padding: 20px; width: 100%; max-width: 520px; margin: auto; }
+.modal-title { font-size: 16px; font-weight: 700; color: var(--gold); margin-bottom: 16px; }
+
+.form-row  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-full { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-label { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+.form-input { background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px; color: var(--text); font-size: 14px; width: 100%; }
+.form-input:focus { outline: none; border-color: var(--claret-mid); }
+.form-hint { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+.pos-check-wrap { background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; }
+.pos-check-row  { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.pos-check-row:last-child { margin-bottom: 0; }
+.pos-grp-lbl { font-size: 10px; font-weight: 700; color: var(--text2); width: 24px; flex-shrink: 0; text-transform: uppercase; }
+.pos-checks  { display: flex; flex-wrap: wrap; gap: 4px; }
+.pcl { display: flex; align-items: center; gap: 3px; cursor: pointer; }
+.pcl input[type=checkbox] { accent-color: var(--gold); width: 13px; height: 13px; cursor: pointer; }
+
+.star-row { display: flex; flex-direction: column; gap: 4px; }
+.star-slider { width: 100%; accent-color: var(--gold); cursor: pointer; }
+.star-preview-row { display: flex; align-items: center; gap: 5px; }
+.star-val-lbl { font-size: 11px; color: var(--text2); min-width: 28px; }
+
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.btn-cancel { background: none; border: 1px solid var(--border); color: var(--text2); padding: 7px 16px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+.btn-cancel:hover { color: var(--text); }
+.btn-save { background: var(--claret); border: none; color: #fff; padding: 7px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-save:hover { background: var(--claret-mid); }
+
+@media (max-width: 680px) {
+  .depth-grid { grid-template-columns: 1fr 1fr; }
+  .form-row   { grid-template-columns: 1fr; }
+  .header-actions { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="crest">AV</div>
+    <div class="header-text">
+      <h1>Aston Villa FC</h1>
+      <p>Football Manager 2026 Touch — スカッド分析</p>
+    </div>
+    <div class="game-date-box">
+      <label for="game-date">ゲーム内日付</label>
+      <input type="date" id="game-date" value="2030-01-16" onchange="onDateChange()">
+    </div>
+    <div class="header-actions">
+      <button class="btn-sm" onclick="exportCSV()">📥 CSV出力</button>
+      <label class="btn-sm" style="cursor:pointer">📤 CSV読込<input type="file" accept=".csv" onchange="importCSV(event)" style="display:none"></label>
+      <button class="btn-sm" onclick="clearAll()" style="color:#F87171;">🗑 全消去</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="stats-grid">
+    <div class="stat-card"><span class="stat-label">登録選手</span><span class="stat-value" id="s-count">0</span><span class="stat-sub">名</span></div>
+    <div class="stat-card"><span class="stat-label">平均 CA</span><span class="stat-value" id="s-avg-ca">—</span><span class="stat-sub">★</span></div>
+    <div class="stat-card"><span class="stat-label">平均年齢</span><span class="stat-value" id="s-avg-age">—</span><span class="stat-sub">歳</span></div>
+    <div class="stat-card"><span class="stat-label">最高 PA</span><span class="stat-value" id="s-top-pa">—</span><span class="stat-sub">★</span></div>
+    <div class="stat-card"><span class="stat-label">総評価額</span><span class="stat-value" id="s-total-val">—</span><span class="stat-sub"></span></div>
+    <div class="stat-card"><span class="stat-label">週給総額</span><span class="stat-value" id="s-total-wage">—</span><span class="stat-sub">/週</span></div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tb-list"  onclick="switchTab('list')">選手一覧</button>
+    <button class="tab-btn"        id="tb-depth" onclick="switchTab('depth')">ポジション層</button>
+    <button class="tab-btn"        id="tb-chart" onclick="switchTab('chart')">チャート分析</button>
+  </div>
+
+  <!-- 選手一覧 -->
+  <div id="tab-list">
+    <div class="controls">
+      <input class="search-box" type="text" id="search" placeholder="🔍 名前で検索..." oninput="renderTable()">
+      <select class="filter-sel" id="pos-filter" onchange="renderTable()">
+        <option value="">全ポジション</option>
+        <option value="GK">GK</option>
+        <option value="DEF">DF</option>
+        <option value="MID">MF</option>
+        <option value="ATT">FW</option>
+      </select>
+      <select class="filter-sel" id="loan-filter" onchange="renderTable()">
+        <option value="">全選手</option>
+        <option value="loan">レンタル放出中のみ</option>
+        <option value="squad">スカッドのみ</option>
+      </select>
+      <select class="filter-sel" id="sort-sel" onchange="renderTable()">
+        <option value="ca-desc">CA 高い順</option>
+        <option value="pa-desc">PA 高い順</option>
+        <option value="growth-desc">成長幅 大きい順</option>
+        <option value="age-asc">年齢 若い順</option>
+        <option value="age-desc">年齢 高い順</option>
+        <option value="value-desc">評価額 高い順</option>
+        <option value="wage-desc">週給 高い順</option>
+        <option value="contract-asc">契約期限 近い順</option>
+        <option value="pos-asc">ポジション順 (GK→ST)</option>
+        <option value="name-asc">名前順</option>
+      </select>
+      <button class="btn-add" onclick="openModal()">＋ 選手追加</button>
+    </div>
+    <div class="table-wrap" id="table-wrap">
+      <table>
+        <thead><tr>
+          <th>名前</th>
+          <th>国籍</th>
+          <th>状態</th>
+          <th>ポジション</th>
+          <th>年齢 / 誕生日</th>
+          <th>CA</th>
+          <th>PA</th>
+          <th>成長</th>
+          <th>評価額</th>
+          <th>週給</th>
+          <th>契約期限</th>
+          <th>操作</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="empty-state">
+      <div class="icon">⚽</div>
+      <p>選手が登録されていません。「＋ 選手追加」から入力してください。</p>
+    </div>
+  </div>
+
+  <!-- ポジション層 -->
+  <div id="tab-depth" style="display:none">
+    <div class="depth-grid" id="depth-grid"></div>
+  </div>
+
+  <!-- チャート -->
+  <div id="tab-chart" style="display:none">
+    <div class="charts-grid">
+      <div class="chart-card"><div class="chart-title">ポジション別人数</div><div style="position:relative;height:200px"><canvas id="c-pos" role="img" aria-label="ポジション別人数"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">CA 分布</div><div style="position:relative;height:200px"><canvas id="c-ca" role="img" aria-label="CA分布"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">年齢分布</div><div style="position:relative;height:200px"><canvas id="c-age" role="img" aria-label="年齢分布"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">CA vs PA（成長ポテンシャル）</div><div style="position:relative;height:200px"><canvas id="c-scatter" role="img" aria-label="CA vs PA散布図"></canvas></div></div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="bgClose(event)">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">選手を追加</div>
+
+    <div class="form-row">
+      <div class="form-group form-full">
+        <span class="form-label">名前</span>
+        <input class="form-input" type="text" id="f-name" placeholder="例: Ollie Watkins">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <span class="form-label">誕生日</span>
+        <input class="form-input" type="date" id="f-dob" onchange="previewAge()">
+        <span class="form-hint" id="f-age-preview">—</span>
+      </div>
+      <div class="form-group">
+        <span class="form-label">国籍</span>
+        <select class="form-input" id="f-nationality">
+          <option value="">— 選択してください —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group form-full">
+        <span class="form-label">ポジション（複数選択可）</span>
+        <div class="pos-check-wrap">
+          <div class="pos-check-row">
+            <span class="pos-grp-lbl" style="color:#FDE68A">GK</span>
+            <div class="pos-checks">
+              <label class="pcl"><input type="checkbox" name="pos" value="GK"><span class="pos-badge pos-gk">GK</span></label>
+            </div>
+          </div>
+          <div class="pos-check-row">
+            <span class="pos-grp-lbl" style="color:#BAE6FD">DF</span>
+            <div class="pos-checks">
+              <label class="pcl"><input type="checkbox" name="pos" value="DC"><span class="pos-badge pos-def">DC</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="DR"><span class="pos-badge pos-def">DR</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="DL"><span class="pos-badge pos-def">DL</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="WBR"><span class="pos-badge pos-def">WBR</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="WBL"><span class="pos-badge pos-def">WBL</span></label>
+            </div>
+          </div>
+          <div class="pos-check-row">
+            <span class="pos-grp-lbl" style="color:#BBF7D0">MF</span>
+            <div class="pos-checks">
+              <label class="pcl"><input type="checkbox" name="pos" value="DM"><span class="pos-badge pos-mid">DM</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="MC"><span class="pos-badge pos-mid">MC</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="MR"><span class="pos-badge pos-mid">MR</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="ML"><span class="pos-badge pos-mid">ML</span></label>
+            </div>
+          </div>
+          <div class="pos-check-row">
+            <span class="pos-grp-lbl" style="color:#FECACA">FW</span>
+            <div class="pos-checks">
+              <label class="pcl"><input type="checkbox" name="pos" value="AMC"><span class="pos-badge pos-att">AMC</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="AMR"><span class="pos-badge pos-att">AMR</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="AML"><span class="pos-badge pos-att">AML</span></label>
+              <label class="pcl"><input type="checkbox" name="pos" value="ST"><span class="pos-badge pos-att">ST</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <span class="form-label">現在能力 CA</span>
+        <div class="star-row">
+          <input type="range" class="star-slider" id="f-ca" min="1" max="10" step="1" value="6" oninput="previewStar('ca')">
+          <div class="star-preview-row"><span id="f-ca-stars"></span><span class="star-val-lbl" id="f-ca-val"></span></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <span class="form-label">潜在能力 PA</span>
+        <div class="star-row">
+          <input type="range" class="star-slider" id="f-pa" min="1" max="10" step="1" value="8" oninput="previewStar('pa')">
+          <div class="star-preview-row"><span id="f-pa-stars"></span><span class="star-val-lbl" id="f-pa-val"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <span class="form-label">評価額（億円）</span>
+        <input class="form-input" type="number" id="f-value" min="0" step="0.1" placeholder="例: 5 → ¥5億">
+        <span class="form-hint" id="f-value-hint">—</span>
+      </div>
+      <div class="form-group">
+        <span class="form-label">週給（万円 / 週）</span>
+        <input class="form-input" type="number" id="f-wage" min="0" step="1" placeholder="例: 200">
+        <span class="form-hint" id="f-wage-hint">—</span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <span class="form-label">契約期限</span>
+        <input class="form-input" type="date" id="f-contract" onchange="previewContract()">
+        <span class="form-hint" id="f-contract-hint">—</span>
+      </div>
+      <div class="form-group">
+        <span class="form-label">メモ（任意）</span>
+        <textarea class="form-input" id="f-note" rows="2" placeholder="特徴・備考など" style="resize:none"></textarea>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group form-full">
+        <label class="loan-check-wrap">
+          <input type="checkbox" id="f-loan">
+          <span>🔄 レンタル放出中</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-save" onclick="savePlayer()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── state ─────────────────────────────────────────────────────────────────────
+let players  = JSON.parse(localStorage.getItem('fm26_v2') || '[]');
+let nextId   = players.length ? Math.max(...players.map(p=>p.id)) + 1 : 1;
+let editId   = null;
+let charts   = {};
+let gameDate = localStorage.getItem('fm26_gamedate') || '2030-01-16';
+document.getElementById('game-date').value = gameDate;
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+const toStars = v => v * 0.5;
+
+function calcAge(dob) {
+  if (!dob) return null;
+  const gd = new Date(gameDate), bd = new Date(dob);
+  let age = gd.getFullYear() - bd.getFullYear();
+  if (gd.getMonth() < bd.getMonth() || (gd.getMonth()===bd.getMonth() && gd.getDate()<bd.getDate())) age--;
+  return age;
+}
+
+function fmtDob(dob) {
+  if (!dob) return '';
+  const [y,m,d] = dob.split('-');
+  return `${y}/${m}/${d}`;
+}
+
+// 万円 → 表示文字列（週給用）
+function fmtYen(man) {
+  if (!man || man === 0) return '—';
+  man = Number(man);
+  if (man >= 10000) {
+    const r = Math.round(man / 10000 * 10) / 10;
+    return `¥${r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)}億`;
+  }
+  return `¥${man.toLocaleString()}万`;
+}
+
+// 万円プレビュー（週給用）
+function fmtYenHint(man) {
+  if (!man || man <= 0) return '—';
+  man = Number(man);
+  if (man >= 10000) { const r=Math.round(man/10000*10)/10; return `= ¥${r%1===0?r.toFixed(0):r.toFixed(1)}億円`; }
+  if (man >= 1) return `= ¥${man.toLocaleString()}万円`;
+  return '—';
+}
+
+// 億円 → 表示文字列（評価額用）
+function fmtOku(oku) {
+  if (!oku || oku === 0) return '—';
+  oku = Number(oku);
+  if (oku < 1) { const man = Math.round(oku * 10000); return `¥${man.toLocaleString()}万`; }
+  const r = Math.round(oku * 10) / 10;
+  return `¥${r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)}億`;
+}
+
+// 億円プレビュー（評価額用）
+function fmtOkuHint(oku) {
+  if (!oku || oku <= 0) return '—';
+  oku = Number(oku);
+  if (oku < 1) { const man = Math.round(oku * 10000); return `= ¥${man.toLocaleString()}万円`; }
+  const r = Math.round(oku * 10) / 10;
+  return `= ¥${r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)}億円`;
+}
+
+// 契約ステータス
+function contractStatus(cd) {
+  if (!cd) return 'none';
+  const gd  = new Date(gameDate);
+  const exp = new Date(cd);
+  if (exp < gd) return 'expired';
+  const months = (exp.getFullYear()-gd.getFullYear())*12 + exp.getMonth()-gd.getMonth();
+  return months <= 12 ? 'warn' : 'ok';
+}
+
+function contractHTML(cd) {
+  if (!cd) return '<span class="contract-none">—</span>';
+  const [y,m,d] = cd.split('-');
+  const ds = `${y}/${m}/${d}`;
+  const st = contractStatus(cd);
+  if (st==='expired') return `<span class="contract-expired">⚠ ${ds}<br><small>期限切れ</small></span>`;
+  if (st==='warn')    return `<span class="contract-warn">⚡ ${ds}<br><small>1年以内</small></span>`;
+  return `<span class="contract-ok">${ds}</span>`;
+}
+
+const POS_GROUP = {GK:'GK',DC:'DEF',DR:'DEF',DL:'DEF',WBR:'DEF',WBL:'DEF',DM:'MID',MC:'MID',MR:'MID',ML:'MID',AMC:'ATT',AMR:'ATT',AML:'ATT',ST:'ATT'};
+const POS_CLS   = {GK:'pos-gk',DEF:'pos-def',MID:'pos-mid',ATT:'pos-att'};
+
+function posGroups(positions) { return [...new Set((positions||[]).map(p=>POS_GROUP[p]).filter(Boolean))]; }
+const POS_ORDER = {GK:0,DC:1,DR:2,DL:3,WBR:4,WBL:5,DM:6,MC:7,MR:8,ML:9,AMC:10,AMR:11,AML:12,ST:13};
+function posOrder(positions) { if(!positions||!positions.length) return 99; return Math.min(...positions.map(p=>POS_ORDER[p]??99)); }
+function posCls(pos)          { return POS_CLS[POS_GROUP[pos]] || 'pos-def'; }
+function posBadgesHTML(positions) {
+  return `<div class="pos-badges">${(positions||[]).map(p=>`<span class="pos-badge ${posCls(p)}">${p}</span>`).join('')}</div>`;
+}
+
+function starsHTML(val, num=true) {
+  let h='';
+  for (let i=1;i<=5;i++) {
+    if (val>=i)        h+='<span class="star full">★</span>';
+    else if(val>=i-.5) h+='<span class="star half">★</span>';
+    else               h+='<span class="star empty">☆</span>';
+  }
+  if (num) h+=`<span class="star-num">${val.toFixed(1)}</span>`;
+  return `<span class="stars">${h}</span>`;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function persist() { localStorage.setItem('fm26_v2', JSON.stringify(players)); }
+
+// ── nations ───────────────────────────────────────────────────────────────────
+const NATIONS = [
+  {n:'アイスランド',f:'🇮🇸'},{n:'アイルランド',f:'🇮🇪'},{n:'アゼルバイジャン',f:'🇦🇿'},
+  {n:'アフガニスタン',f:'🇦🇫'},{n:'アメリカ',f:'🇺🇸'},{n:'アルジェリア',f:'🇩🇿'},
+  {n:'アルゼンチン',f:'🇦🇷'},{n:'アルバニア',f:'🇦🇱'},{n:'アンゴラ',f:'🇦🇴'},
+  {n:'イエメン',f:'🇾🇪'},{n:'イスラエル',f:'🇮🇱'},{n:'イタリア',f:'🇮🇹'},
+  {n:'イラク',f:'🇮🇶'},{n:'イラン',f:'🇮🇷'},{n:'インド',f:'🇮🇳'},
+  {n:'インドネシア',f:'🇮🇩'},{n:'ウェールズ',f:'🏴󠁧󠁢󠁷󠁬󠁳󠁿'},{n:'ウガンダ',f:'🇺🇬'},
+  {n:'ウクライナ',f:'🇺🇦'},{n:'ウズベキスタン',f:'🇺🇿'},{n:'ウルグアイ',f:'🇺🇾'},
+  {n:'エクアドル',f:'🇪🇨'},{n:'エジプト',f:'🇪🇬'},{n:'エチオピア',f:'🇪🇹'},
+  {n:'エリトリア',f:'🇪🇷'},{n:'オーストラリア',f:'🇦🇺'},{n:'オーストリア',f:'🇦🇹'},
+  {n:'オマーン',f:'🇴🇲'},{n:'オランダ',f:'🇳🇱'},{n:'ガーナ',f:'🇬🇭'},
+  {n:'カタール',f:'🇶🇦'},{n:'カナダ',f:'🇨🇦'},{n:'カメルーン',f:'🇨🇲'},
+  {n:'ガボン',f:'🇬🇦'},{n:'韓国',f:'🇰🇷'},{n:'ガンビア',f:'🇬🇲'},
+  {n:'北アイルランド',f:'🇬🇧'},{n:'北マケドニア',f:'🇲🇰'},{n:'ギニア',f:'🇬🇳'},
+  {n:'ギニアビサウ',f:'🇬🇼'},{n:'キプロス',f:'🇨🇾'},{n:'ギリシャ',f:'🇬🇷'},
+  {n:'クウェート',f:'🇰🇼'},{n:'クロアチア',f:'🇭🇷'},{n:'コートジボワール',f:'🇨🇮'},
+  {n:'コスタリカ',f:'🇨🇷'},{n:'コソボ',f:'🇽🇰'},{n:'コロンビア',f:'🇨🇴'},
+  {n:'コンゴ',f:'🇨🇬'},{n:'コンゴ民主共和国',f:'🇨🇩'},{n:'サウジアラビア',f:'🇸🇦'},
+  {n:'ザンビア',f:'🇿🇲'},{n:'シエラレオネ',f:'🇸🇱'},{n:'ジブラルタル',f:'🇬🇮'},
+  {n:'ジャマイカ',f:'🇯🇲'},{n:'シリア',f:'🇸🇾'},{n:'ジンバブエ',f:'🇿🇼'},
+  {n:'スイス',f:'🇨🇭'},{n:'スウェーデン',f:'🇸🇪'},{n:'スーダン',f:'🇸🇩'},
+  {n:'スコットランド',f:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'},{n:'スペイン',f:'🇪🇸'},{n:'スリランカ',f:'🇱🇰'},
+  {n:'スロバキア',f:'🇸🇰'},{n:'スロベニア',f:'🇸🇮'},{n:'セネガル',f:'🇸🇳'},
+  {n:'セルビア',f:'🇷🇸'},{n:'タンザニア',f:'🇹🇿'},{n:'チェコ',f:'🇨🇿'},
+  {n:'チャド',f:'🇹🇩'},{n:'チュニジア',f:'🇹🇳'},{n:'チリ',f:'🇨🇱'},
+  {n:'中国',f:'🇨🇳'},{n:'デンマーク',f:'🇩🇰'},{n:'ドイツ',f:'🇩🇪'},
+  {n:'トーゴ',f:'🇹🇬'},{n:'トルコ',f:'🇹🇷'},{n:'ナイジェリア',f:'🇳🇬'},
+  {n:'ナミビア',f:'🇳🇦'},{n:'日本',f:'🇯🇵'},{n:'ニュージーランド',f:'🇳🇿'},
+  {n:'ノルウェー',f:'🇳🇴'},{n:'ハイチ',f:'🇭🇹'},{n:'パナマ',f:'🇵🇦'},
+  {n:'ハンガリー',f:'🇭🇺'},{n:'フィリピン',f:'🇵🇭'},{n:'フィンランド',f:'🇫🇮'},
+  {n:'ブラジル',f:'🇧🇷'},{n:'フランス',f:'🇫🇷'},{n:'ブルガリア',f:'🇧🇬'},
+  {n:'ブルキナファソ',f:'🇧🇫'},{n:'ベナン',f:'🇧🇯'},{n:'ベネズエラ',f:'🇻🇪'},
+  {n:'ベラルーシ',f:'🇧🇾'},{n:'ベルギー',f:'🇧🇪'},{n:'ペルー',f:'🇵🇪'},
+  {n:'ボスニア・ヘルツェゴビナ',f:'🇧🇦'},{n:'ボリビア',f:'🇧🇴'},{n:'ポーランド',f:'🇵🇱'},
+  {n:'ポルトガル',f:'🇵🇹'},{n:'マリ',f:'🇲🇱'},{n:'マルタ',f:'🇲🇹'},
+  {n:'モーリタニア',f:'🇲🇷'},{n:'モザンビーク',f:'🇲🇿'},{n:'モロッコ',f:'🇲🇦'},
+  {n:'モンテネグロ',f:'🇲🇪'},{n:'ヨルダン',f:'🇯🇴'},{n:'ラトビア',f:'🇱🇻'},
+  {n:'リトアニア',f:'🇱🇹'},{n:'リビア',f:'🇱🇾'},{n:'ルーマニア',f:'🇷🇴'},
+  {n:'ルクセンブルク',f:'🇱🇺'},{n:'ロシア',f:'🇷🇺'},{n:'イングランド',f:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+];
+NATIONS.sort((a,b)=>a.n.localeCompare(b.n,'ja'));
+
+const NAT_MAP = Object.fromEntries(NATIONS.map(n=>[n.n, n.f]));
+
+function natHTML(nat) {
+  if (!nat) return '<span style="color:var(--text2)">—</span>';
+  const flag = NAT_MAP[nat] || '';
+  return `<span title="${esc(nat)}">${flag} <span style="font-size:11px">${esc(nat)}</span></span>`;
+}
+
+function buildNatSelect() {
+  const sel = document.getElementById('f-nationality');
+  NATIONS.forEach(({n,f}) => {
+    const opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = `${f} ${n}`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── game date ─────────────────────────────────────────────────────────────────
+function onDateChange() {
+  gameDate = document.getElementById('game-date').value;
+  localStorage.setItem('fm26_gamedate', gameDate);
+  renderTable();
+}
+
+// ── stats ─────────────────────────────────────────────────────────────────────
+function renderStats() {
+  const n = players.length;
+  document.getElementById('s-count').textContent = n;
+  if (!n) {
+    ['s-avg-ca','s-avg-age','s-top-pa','s-total-val','s-total-wage'].forEach(id=>document.getElementById(id).textContent='—');
+    return;
+  }
+  const avgCa   = players.reduce((s,p)=>s+toStars(p.ca),0)/n;
+  const ages    = players.map(p=>calcAge(p.dob)).filter(a=>a!==null);
+  const avgAge  = ages.length ? ages.reduce((s,a)=>s+a,0)/ages.length : null;
+  const topPa   = Math.max(...players.map(p=>toStars(p.pa)));
+  const totVal  = players.reduce((s,p)=>s+(Number(p.value)||0),0);
+  const totWage = players.reduce((s,p)=>s+(Number(p.wage)||0),0);
+  document.getElementById('s-avg-ca').textContent   = avgCa.toFixed(1);
+  document.getElementById('s-avg-age').textContent  = avgAge!==null ? avgAge.toFixed(1) : '—';
+  document.getElementById('s-top-pa').textContent   = topPa.toFixed(1);
+  document.getElementById('s-total-val').textContent  = fmtOku(totVal);
+  document.getElementById('s-total-wage').textContent = fmtYen(totWage);
+}
+
+// ── table ─────────────────────────────────────────────────────────────────────
+function getList() {
+  const q  = document.getElementById('search').value.toLowerCase();
+  const pf = document.getElementById('pos-filter').value;
+  const lf = document.getElementById('loan-filter').value;
+  const sv = document.getElementById('sort-sel').value;
+  const [sk,sd] = sv.split('-');
+
+  let list = players.filter(p => {
+    if (q && !p.name.toLowerCase().includes(q)) return false;
+    if (pf && !posGroups(p.positions).includes(pf)) return false;
+    if (lf === 'loan'  && !p.loanOut) return false;
+    if (lf === 'squad' &&  p.loanOut) return false;
+    return true;
+  });
+
+  list.sort((a,b) => {
+    let va,vb;
+    if      (sk==='ca')       { va=a.ca;               vb=b.ca; }
+    else if (sk==='pa')       { va=a.pa;               vb=b.pa; }
+    else if (sk==='growth')   { va=a.pa-a.ca;          vb=b.pa-b.ca; }
+    else if (sk==='age')      { va=calcAge(a.dob)??999;vb=calcAge(b.dob)??999; }
+    else if (sk==='value')    { va=Number(a.value)||0;  vb=Number(b.value)||0; }
+    else if (sk==='wage')     { va=Number(a.wage)||0;   vb=Number(b.wage)||0; }
+    else if (sk==='contract') { va=a.contract||'9999';  vb=b.contract||'9999'; }
+    else if (sk==='pos')      { va=posOrder(a.positions); vb=posOrder(b.positions); }
+    else                      { va=a.name;              vb=b.name; }
+    if (typeof va==='string') return sd==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return sd==='asc'?va-vb:vb-va;
+  });
+  return list;
+}
+
+function renderTable() {
+  const list  = getList();
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty-state');
+  const wrap  = document.getElementById('table-wrap');
+  renderStats();
+  if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; wrap.style.display='none'; return; }
+  empty.style.display='none'; wrap.style.display='block';
+
+  tbody.innerHTML = list.map(p => {
+    const ca  = toStars(p.ca);
+    const pa  = toStars(p.pa);
+    const gr  = pa - ca;
+    const age = calcAge(p.dob);
+    return `<tr>
+      <td><strong>${esc(p.name)}</strong>${p.note?`<br><span style="font-size:10px;color:var(--text2)">${esc(p.note)}</span>`:''}</td>
+      <td style="white-space:nowrap;font-size:13px">${natHTML(p.nationality)}</td>
+      <td>${p.loanOut?'<span class="loan-badge">レンタル放出</span>':'<span style="color:var(--text2);font-size:12px">—</span>'}</td>
+      <td>${posBadgesHTML(p.positions)}</td>
+      <td>${age!==null?`<strong>${age}</strong>歳`:'—'}<br><span style="font-size:10px;color:var(--text2)">${fmtDob(p.dob)}</span></td>
+      <td>${starsHTML(ca)}</td>
+      <td>${starsHTML(pa)}</td>
+      <td>${gr>0?`<span class="growth-pos">▲${gr.toFixed(1)}★</span>`:`<span class="growth-zero">—</span>`}</td>
+      <td style="font-size:12px;white-space:nowrap">${fmtOku(p.value)}</td>
+      <td style="font-size:12px;white-space:nowrap">${p.wage?fmtYen(p.wage)+'/週':'—'}</td>
+      <td>${contractHTML(p.contract)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-icon" onclick="openModal(${p.id})">編集</button>
+        <button class="btn-icon btn-del" onclick="delPlayer(${p.id})">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── depth ─────────────────────────────────────────────────────────────────────
+const GRP_CONF = [
+  {key:'GK',  label:'GK ゴールキーパー',     color:'#854D0E', bg:'#78350F22', positions:['GK']},
+  {key:'DEF', label:'DF ディフェンダー',      color:'#1D4ED8', bg:'#1E3A5F22', positions:['DC','DR','DL','WBR','WBL']},
+  {key:'MID', label:'MF ミッドフィールダー',  color:'#15803D', bg:'#14532D22', positions:['DM','MC','MR','ML']},
+  {key:'ATT', label:'FW フォワード',          color:'#DC2626', bg:'#7F1D1D22', positions:['AMC','AMR','AML','ST']},
+];
+
+function renderDepth() {
+  const grid = document.getElementById('depth-grid');
+  grid.innerHTML = GRP_CONF.map(grp => {
+    const list = players
+      .filter(p=>(p.positions||[]).some(pos=>grp.positions.includes(pos)))
+      .sort((a,b)=>b.ca-a.ca);
+    const rows = list.map(p => {
+      const age=calcAge(p.dob), ca=toStars(p.ca), pa=toStars(p.pa);
+      const cs=contractStatus(p.contract);
+      const contractDot = cs==='expired'?`<span style="color:var(--red);font-size:9px">●期限切</span>`:cs==='warn'?`<span style="color:var(--amber);font-size:9px">●期限近</span>`:'';
+      return `<div class="depth-player">
+        <div class="dp-name">${esc(p.name)} ${contractDot}</div>
+        <div class="dp-info">
+          ${posBadgesHTML(p.positions)}
+          <span class="dp-age">${age!==null?age+'歳':''}</span>
+          <span class="dp-ca">${starsHTML(ca,false)} ${ca.toFixed(1)}</span>
+          <span style="font-size:9px;color:var(--text2)">PA${pa.toFixed(1)}</span>
+        </div>
+      </div>`;
+    }).join('') || `<div style="font-size:11px;color:var(--text2);text-align:center;padding:8px">登録なし</div>`;
+    return `<div class="depth-col">
+      <div class="depth-header" style="color:${grp.color};background:${grp.bg}">${grp.label}（${list.length}名）</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+// ── charts ────────────────────────────────────────────────────────────────────
+const TICK='#9CA3AF', GRID='#374151';
+const BOPTS = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} };
+function dc(k) { if(charts[k]){charts[k].destroy();delete charts[k];} }
+
+function renderCharts() {
+  dc('pos');
+  const gc={GK:0,DEF:0,MID:0,ATT:0};
+  players.forEach(p=>posGroups(p.positions).forEach(g=>{ if(gc[g]!==undefined) gc[g]++; }));
+  charts.pos=new Chart(document.getElementById('c-pos'),{
+    type:'bar', data:{labels:['GK','DF','MF','FW'],datasets:[{data:Object.values(gc),backgroundColor:['#B45309','#1D4ED8','#15803D','#DC2626'],borderRadius:6}]},
+    options:{...BOPTS,scales:{y:{ticks:{color:TICK,stepSize:1},grid:{color:GRID}},x:{ticks:{color:TICK},grid:{display:false}}}}
+  });
+
+  dc('ca');
+  const bins={'★1以下':0,'★1.5-2':0,'★2.5-3':0,'★3.5-4':0,'★4.5-5':0};
+  players.forEach(p=>{
+    const ca=toStars(p.ca);
+    if(ca<=1.0)bins['★1以下']++;
+    else if(ca<=2.0)bins['★1.5-2']++;
+    else if(ca<=3.0)bins['★2.5-3']++;
+    else if(ca<=4.0)bins['★3.5-4']++;
+    else bins['★4.5-5']++;
+  });
+  charts.ca=new Chart(document.getElementById('c-ca'),{
+    type:'bar',data:{labels:Object.keys(bins),datasets:[{data:Object.values(bins),backgroundColor:'#C5A028',borderRadius:6}]},
+    options:{...BOPTS,scales:{y:{ticks:{color:TICK,stepSize:1},grid:{color:GRID}},x:{ticks:{color:TICK,font:{size:10}},grid:{display:false}}}}
+  });
+
+  dc('age');
+  const ab={};
+  players.forEach(p=>{
+    const age=calcAge(p.dob); if(age===null)return;
+    const k=`${Math.floor(age/5)*5}-${Math.floor(age/5)*5+4}`;
+    ab[k]=(ab[k]||0)+1;
+  });
+  const as=Object.entries(ab).sort((a,b)=>parseInt(a)-parseInt(b));
+  charts.age=new Chart(document.getElementById('c-age'),{
+    type:'bar',data:{labels:as.map(([k])=>k+'歳'),datasets:[{data:as.map(([,v])=>v),backgroundColor:'#6366F1',borderRadius:6}]},
+    options:{...BOPTS,scales:{y:{ticks:{color:TICK,stepSize:1},grid:{color:GRID}},x:{ticks:{color:TICK},grid:{display:false}}}}
+  });
+
+  dc('scatter');
+  const sd=players.map(p=>({x:toStars(p.ca),y:toStars(p.pa),label:p.name}));
+  charts.scatter=new Chart(document.getElementById('c-scatter'),{
+    type:'scatter',data:{datasets:[{data:sd,backgroundColor:'rgba(197,160,40,0.55)',borderColor:'#C5A028',pointRadius:6,pointHoverRadius:9}]},
+    options:{...BOPTS,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const d=sd[ctx.dataIndex];return `${d.label}: CA ${d.x}★ / PA ${d.y}★`;}}}},
+      scales:{
+        x:{min:0,max:5.5,title:{display:true,text:'CA（現在能力）',color:TICK},ticks:{color:TICK},grid:{color:GRID}},
+        y:{min:0,max:5.5,title:{display:true,text:'PA（潜在能力）',color:TICK},ticks:{color:TICK},grid:{color:GRID}}
+      }
+    }
+  });
+}
+
+// ── tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  ['list','depth','chart'].forEach(t=>{
+    document.getElementById(`tab-${t}`).style.display=t===name?'block':'none';
+    document.getElementById(`tb-${t}`).classList.toggle('active',t===name);
+  });
+  if(name==='depth') renderDepth();
+  if(name==='chart') renderCharts();
+}
+
+// ── modal ─────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  editId = id||null;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.querySelectorAll('input[name=pos]').forEach(cb=>cb.checked=false);
+
+  if (id) {
+    const p=players.find(x=>x.id===id);
+    document.getElementById('modal-title').textContent='選手を編集';
+    document.getElementById('f-name').value     = p.name;
+    document.getElementById('f-dob').value      = p.dob||'';
+    document.getElementById('f-ca').value       = p.ca;
+    document.getElementById('f-pa').value       = p.pa;
+    document.getElementById('f-value').value    = p.value||'';
+    document.getElementById('f-wage').value     = p.wage||'';
+    document.getElementById('f-contract').value = p.contract||'';
+    document.getElementById('f-note').value     = p.note||'';
+    document.getElementById('f-loan').checked        = !!p.loanOut;
+    document.getElementById('f-nationality').value   = p.nationality||'';
+    (p.positions||[]).forEach(pos=>{ const cb=document.querySelector(`input[name=pos][value="${pos}"]`); if(cb) cb.checked=true; });
+  } else {
+    document.getElementById('modal-title').textContent='選手を追加';
+    ['f-name','f-value','f-wage','f-note'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f-dob').value='';
+    document.getElementById('f-contract').value='';
+    document.getElementById('f-loan').checked=false;
+    document.getElementById('f-nationality').value='';
+    document.getElementById('f-ca').value=6;
+    document.getElementById('f-pa').value=8;
+  }
+  previewAge(); previewStar('ca'); previewStar('pa'); previewContract();
+  updateValueHint('value'); updateValueHint('wage');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); editId=null; }
+function bgClose(e)   { if(e.target===document.getElementById('modal-overlay')) closeModal(); }
+
+function previewAge() {
+  const age=calcAge(document.getElementById('f-dob').value);
+  document.getElementById('f-age-preview').textContent = age!==null?`年齢: ${age}歳`:'—';
+}
+
+function previewStar(field) {
+  const v=parseInt(document.getElementById(`f-${field}`).value), s=toStars(v);
+  document.getElementById(`f-${field}-stars`).innerHTML=starsHTML(s,false);
+  document.getElementById(`f-${field}-val`).textContent=s.toFixed(1)+'★';
+}
+
+function previewContract() {
+  const cd=document.getElementById('f-contract').value;
+  const hint=document.getElementById('f-contract-hint');
+  if (!cd) { hint.textContent='—'; hint.style.color=''; return; }
+  const st=contractStatus(cd);
+  if (st==='expired') { hint.textContent='⚠ 期限切れ'; hint.style.color='var(--red)'; }
+  else if (st==='warn') { hint.textContent='⚡ 1年以内に期限'; hint.style.color='var(--amber)'; }
+  else {
+    const gd=new Date(gameDate), cd2=new Date(cd);
+    const months=(cd2.getFullYear()-gd.getFullYear())*12+cd2.getMonth()-gd.getMonth();
+    hint.textContent=`残り約${months}ヶ月`; hint.style.color='var(--green)';
+  }
+}
+
+function updateValueHint(field) {
+  const v=parseFloat(document.getElementById(`f-${field}`).value)||0;
+  document.getElementById(`f-${field}-hint`).textContent = field==='value' ? fmtOkuHint(v) : fmtYenHint(v);
+}
+
+// ── save/delete ───────────────────────────────────────────────────────────────
+function savePlayer() {
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('名前を入力してください');return;}
+  const positions=[...document.querySelectorAll('input[name=pos]:checked')].map(cb=>cb.value);
+  if(!positions.length){alert('ポジションを1つ以上選択してください');return;}
+
+  const data = {
+    name,
+    dob:      document.getElementById('f-dob').value,
+    positions,
+    ca:       parseInt(document.getElementById('f-ca').value),
+    pa:       parseInt(document.getElementById('f-pa').value),
+    value:    parseFloat(document.getElementById('f-value').value)||0,
+    wage:     parseFloat(document.getElementById('f-wage').value)||0,
+    contract: document.getElementById('f-contract').value,
+    note:     document.getElementById('f-note').value.trim(),
+    loanOut:     document.getElementById('f-loan').checked,
+    nationality: document.getElementById('f-nationality').value,
+  };
+
+  if(editId) { const i=players.findIndex(x=>x.id===editId); players[i]={...data,id:editId}; }
+  else       { players.push({...data,id:nextId++}); }
+  persist(); closeModal(); renderTable();
+}
+
+function delPlayer(id) {
+  const p=players.find(x=>x.id===id);
+  if(!confirm(`「${p.name}」を削除しますか？`))return;
+  players=players.filter(x=>x.id!==id);
+  persist(); renderTable();
+}
+
+// ── csv ───────────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const hdr='ID,名前,誕生日,国籍,ポジション(;区切り),CA,PA,評価額(億円),週給(万円),契約期限,レンタル放出,メモ';
+  const rows=players.map(p=>`${p.id},"${p.name}",${p.dob||''},"${p.nationality||''}","${(p.positions||[]).join(';')}",${p.ca},${p.pa},${p.value||0},${p.wage||0},${p.contract||''},${p.loanOut?1:0},"${p.note||''}"`);
+  const blob=new Blob(['﻿'+[hdr,...rows].join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='AstonVilla_FM26.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importCSV(e) {
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const lines=ev.target.result.replace(/^﻿/,'').split(/\r?\n/).slice(1);
+    let count=0;
+    lines.forEach(line=>{
+      if(!line.trim())return;
+      const cols=line.match(/(".*?"|[^,]*)/g);
+      if(!cols||cols.length<9)return;
+      const clean=cols.map(c=>c.replace(/^"|"$/g,''));
+      const [,name,dob,nationality,posStr,ca,pa,value,wage,contract,loan,note]=clean;
+      if(!name)return;
+      players.push({id:nextId++,name,dob:dob||'',nationality:nationality||'',positions:posStr?posStr.split(';').filter(Boolean):[],ca:+ca||6,pa:+pa||6,value:+value||0,wage:+wage||0,contract:contract||'',loanOut:loan==='1',note:note||''});
+      count++;
+    });
+    persist(); renderTable(); alert(`${count}名をインポートしました`);
+  };
+  reader.readAsText(file,'UTF-8'); e.target.value='';
+}
+
+function clearAll() {
+  if(!confirm('全選手データを削除しますか？'))return;
+  players=[]; persist(); renderTable();
+}
+
+// ── value hint listeners ──────────────────────────────────────────────────────
+document.getElementById('f-value').addEventListener('input', ()=>updateValueHint('value'));
+document.getElementById('f-wage').addEventListener('input',  ()=>updateValueHint('wage'));
+
+// ── init ──────────────────────────────────────────────────────────────────────
+buildNatSelect();
+renderTable();
+</script>
+</body>
+</html>
