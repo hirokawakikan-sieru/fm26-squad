@@ -486,7 +486,23 @@ function starsHTML(val, num=true) {
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function persist() { localStorage.setItem('fm26_v2', JSON.stringify(players)); }
+function persist() {
+  localStorage.setItem('fm26_v2', JSON.stringify(players));
+  if (window.fbSave) window.fbSave(players);
+}
+function _fbUpdatePlayers(arr) {
+  players = arr;
+  nextId  = arr.length ? Math.max(...arr.map(p=>p.id)) + 1 : 1;
+  localStorage.setItem('fm26_v2', JSON.stringify(arr));
+  renderTable();
+}
+function _fbUpdateDate(date) {
+  gameDate = date;
+  document.getElementById('game-date').value = date;
+  localStorage.setItem('fm26_gamedate', date);
+  renderTable();
+}
+function _fbGetPlayers() { return players; }
 
 // ── nations ───────────────────────────────────────────────────────────────────
 const NATIONS = [
@@ -553,6 +569,7 @@ function buildNatSelect() {
 function onDateChange() {
   gameDate = document.getElementById('game-date').value;
   localStorage.setItem('fm26_gamedate', gameDate);
+  if (window.fbSaveDate) window.fbSaveDate(gameDate);
   renderTable();
 }
 
@@ -886,6 +903,63 @@ document.getElementById('f-wage').addEventListener('input',  ()=>updateValueHint
 // ── init ──────────────────────────────────────────────────────────────────────
 buildNatSelect();
 renderTable();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCcTVgHIb-0GnbBqKdFvDi2oZjR691aOvs",
+  authDomain: "fm26-squad.firebaseapp.com",
+  databaseURL: "https://fm26-squad-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "fm26-squad",
+  storageBucket: "fm26-squad.firebasestorage.app",
+  messagingSenderId: "125977059353",
+  appId: "1:125977059353:web:57b46447b4a4918de4ca88"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+const playersRef = ref(db, 'squad/players');
+const dateRef    = ref(db, 'squad/gameDate');
+
+// players を object形式で保存（Firebase配列の変換ズレ対策）
+window.fbSave = (data) => {
+  if (!data.length) { set(playersRef, null); return; }
+  const obj = {};
+  data.forEach(p => { obj[p.id] = p; });
+  set(playersRef, obj);
+};
+window.fbSaveDate = (date) => set(dateRef, date);
+
+// 選手データ：リアルタイム同期
+let firstPlayerLoad = true;
+onValue(playersRef, (snapshot) => {
+  const raw = snapshot.val();
+  if (raw !== null) {
+    const arr = Object.values(raw).sort((a,b) => a.id - b.id);
+    window._fbUpdatePlayers(arr);
+  } else if (firstPlayerLoad) {
+    // Firebaseが空 → ローカルにデータがあれば移行
+    const local = window._fbGetPlayers();
+    if (local.length > 0) window.fbSave(local);
+  }
+  firstPlayerLoad = false;
+});
+
+// ゲーム日付：リアルタイム同期
+let firstDateLoad = true;
+onValue(dateRef, (snapshot) => {
+  const date = snapshot.val();
+  if (date) {
+    window._fbUpdateDate(date);
+  } else if (firstDateLoad) {
+    // Firebaseが空 → ローカルの日付を移行
+    window.fbSaveDate(window.gameDate || '2030-01-16');
+  }
+  firstDateLoad = false;
+});
 </script>
 </body>
 </html>
